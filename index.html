@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TuProfe20 Lab - Misión Fracciones (Lo que queda)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Fuentes -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700;900&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- KaTeX (Con extensión cancel para la simplificación) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/cancel.min.js"></script>
+    
+    <!-- GSAP para animaciones UI -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+
+    <!-- MathBox (Incluye Three.js interno, por lo que usaremos su instancia global THREE para el fondo puro) -->
+    <link rel="stylesheet" href="https://unpkg.com/mathbox@0.1.0/build/mathbox.css">
+    <script src="https://unpkg.com/mathbox@0.1.0/build/mathbox-bundle.js"></script>
+
+    <!-- JSXGraph -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { app: ['Nunito', 'sans-serif'], display: ['Fredoka', 'sans-serif'] },
+                    colors: {
+                        brand: { primary: '#FF007A', secondary: '#00F0FF', tertiary: '#7000FF', yellow: '#FFE600', green: '#00FF66', orange: '#FF6B00', bg: '#05070A' }
+                    },
+                    animation: { popIn: 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', pulseGlow: 'pulseGlow 2s infinite' },
+                    keyframes: {
+                        popIn: { '0%': { opacity: 0, transform: 'scale(0.8) translateY(20px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
+                        pulseGlow: { '0%, 100%': { boxShadow: '0 0 15px currentColor' }, '50%': { boxShadow: '0 0 35px currentColor' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root { --c-primary: #FF007A; --c-secondary: #00F0FF; --c-green: #00FF66; --c-yellow: #FFE600; }
+        body { font-family: 'Nunito', sans-serif; background-color: #05070A; color: #fff; margin: 0; overflow-x: hidden; touch-action: manipulation; }
+        
+        /* Contenedor del fondo dinámico de Three.js */
+        #canvas-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -10; pointer-events: none; }
+        
+        /* Efecto Cristal */
+        .glass-panel { background: rgba(10, 15, 25, 0.75); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
+        
+        /* Fondo Cuadriculado con opacidad 0.10 solicitado */
+        .grid-board {
+            background-color: rgba(5, 7, 10, 0.8);
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px);
+            background-size: 30px 30px;
+            background-position: center center;
+        }
+
+        .neon-text { text-shadow: 0 0 10px currentColor, 0 0 25px currentColor; }
+        .bouncy-hover { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .bouncy-hover:hover { transform: translateY(-5px) scale(1.03); }
+        .bouncy-hover:active { transform: translateY(2px) scale(0.97); }
+
+        /* KaTeX overrides para mejor visibilidad */
+        .katex-html { font-weight: 900; text-shadow: 0 0 8px rgba(255,255,255,0.3); }
+        .katex { font-size: 1.2em !important; font-family: 'Fredoka', sans-serif !important; }
+        
+        /* Robot Animations */
+        .robot-float { animation: robotFloat 3s ease-in-out infinite; }
+        .robot-glow { animation: robotGlow 2s ease-in-out infinite alternate; }
+        .robot-blink { animation: robotBlink 4s infinite; transform-origin: center; }
+        @keyframes robotFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes robotGlow { from { filter: drop-shadow(0 0 8px #00F0FF); } to { filter: drop-shadow(0 0 25px #00F0FF); } }
+        @keyframes robotBlink { 0%, 45%, 55%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
+        
+        /* JSXGraph Overrides para estilo Dark/Neon */
+        .jxgbox { border: none !important; border-radius: 50%; overflow: hidden; background: transparent !important;}
+        .JXGtext { font-family: 'Fredoka', sans-serif !important; font-weight: bold !important; color: white !important; }
+    </style>
+</head>
+<body>
+    <!-- Background Canvas for Three.js -->
+    <canvas id="canvas-bg"></canvas>
+    
+    <!-- React Root -->
+    <div id="root" class="relative z-10 w-full min-h-[100dvh] flex flex-col"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // ==========================================
+        // SISTEMA DE SONIDO
+        // ==========================================
+        const audioCtx = typeof window !== 'undefined' ? new (window.AudioContext || window.webkitAudioContext)() : null;
+        const playTone = (freq, type, duration, vol = 0.1) => {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        };
+        const Sounds = {
+            click: () => playTone(600, 'triangle', 0.1),
+            pop: () => playTone(400, 'sine', 0.15, 0.2),
+            success: () => { playTone(523.25, 'sine', 0.1, 0.15); setTimeout(() => playTone(659.25, 'sine', 0.1, 0.15), 100); setTimeout(() => playTone(783.99, 'sine', 0.3, 0.15), 200); },
+            magic: () => { [880, 1108, 1318, 1760].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.2, 0.1), i * 80)); }
+        };
+
+        // ==========================================
+        // COMPONENTES UI GLOBALES
+        // ==========================================
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const elRef = useRef(null);
+            useEffect(() => { if (elRef.current) lucide.createIcons({ icons: { [name]: lucide.icons[name] }, nameAttr: 'data-lucide', attrs: { class: className, width: size, height: size } }); }, [name, size, className]);
+            return <i ref={elRef} data-lucide={name}></i>;
+        };
+
+        const MathTex = ({ tex, block = false, className = "" }) => {
+            const elRef = useRef(null);
+            useEffect(() => {
+                if (elRef.current) {
+                    try { katex.render(tex, elRef.current, { displayMode: block, throwOnError: false }); } 
+                    catch (e) { elRef.current.innerHTML = tex; }
+                }
+            }, [tex, block]);
+            return <span ref={elRef} className={className}></span>;
+        };
+
+        const AnimatedRobot = ({ size = 150 }) => (
+            <svg width={size} height={size} viewBox="0 0 100 100" className="overflow-visible" xmlns="http://www.w3.org/2000/svg">
+                <g className="robot-float">
+                    <line x1="50" y1="25" x2="50" y2="10" stroke="#94A3B8" strokeWidth="4" strokeLinecap="round" />
+                    <circle cx="50" cy="8" r="5" fill="#FF007A" className="animate-pulse" />
+                    <rect x="15" y="25" width="70" height="55" rx="20" fill="#1E293B" stroke="#00F0FF" strokeWidth="4" className="robot-glow" />
+                    <rect x="25" y="32" width="50" height="35" rx="12" fill="#0F172A" />
+                    <g className="robot-blink origin-center">
+                        <circle cx="37" cy="45" r="6" fill="#FFE600" filter="drop-shadow(0 0 5px #FFE600)" />
+                        <circle cx="63" cy="45" r="6" fill="#FFE600" filter="drop-shadow(0 0 5px #FFE600)" />
+                    </g>
+                    <path d="M 42 56 Q 50 62 58 56" stroke="#00FF66" strokeWidth="3" fill="none" strokeLinecap="round" filter="drop-shadow(0 0 4px #00FF66)" />
+                    <path d="M 15 42 L 5 47 L 5 53 L 15 58 Z" fill="#64748B" />
+                    <path d="M 85 42 L 95 47 L 95 53 L 85 58 Z" fill="#64748B" />
+                </g>
+            </svg>
+        );
+
+        // ==========================================
+        // LIBRERÍAS MATEMÁTICAS / 3D WRAPPERS
+        // ==========================================
+        
+        const useThreeBackground = () => {
+            useEffect(() => {
+                const canvas = document.getElementById('canvas-bg');
+                // Usar el THREE global expuesto por MathBox bundle
+                const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+                camera.position.z = 200;
+
+                // Partículas Dinámicas
+                const geometry = new THREE.BufferGeometry();
+                const count = 250; // Reducido para ser más sutil y no distraer
+                const positions = new Float32Array(count * 3);
+                const colors = new Float32Array(count * 3);
+                // Colores de alto contraste: Turquesa, Amarillo Neón, Blanco
+                const colorPalette = [new THREE.Color('#00F0FF'), new THREE.Color('#FFE600'), new THREE.Color('#FFFFFF')];
+                
+                for(let i=0; i<count; i++) {
+                    positions[i*3] = (Math.random() - 0.5) * 400;
+                    positions[i*3+1] = (Math.random() - 0.5) * 400;
+                    positions[i*3+2] = (Math.random() - 0.5) * 400;
+                    const c = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+                    colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+                }
+                
+                if (typeof geometry.setAttribute === 'function') {
+                    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                } else if (typeof geometry.addAttribute === 'function') {
+                    // Fallback para la versión antigua de Three.js incluida en MathBox
+                    geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+                }
+                
+                // Compatibilidad de Nombres para la versión antigua de Three.js (r69) de MathBox
+                const MaterialClass = THREE.PointsMaterial || THREE.PointCloudMaterial || THREE.ParticleBasicMaterial;
+                const PointsClass = THREE.Points || THREE.PointCloud || THREE.ParticleSystem;
+                
+                // En versiones antiguas vertexColors espera una constante (THREE.VertexColors = 2)
+                const vColor = THREE.VertexColors !== undefined ? THREE.VertexColors : 2;
+
+                const material = new MaterialClass({ 
+                    size: 2.0, // Tamaño reducido (más sutil)
+                    vertexColors: vColor, 
+                    transparent: true, 
+                    opacity: 0.35, // Opacidad baja para que quede verdaderamente en el fondo
+                    blending: THREE.AdditiveBlending 
+                });
+                
+                const particles = new PointsClass(geometry, material);
+                scene.add(particles);
+
+                let reqId;
+                let time = 0;
+                const animate = () => {
+                    reqId = requestAnimationFrame(animate);
+                    time += 0.005; // Incremento de tiempo más lento
+                    // Movimiento mucho más lento y relajante
+                    particles.rotation.y += 0.0005;
+                    particles.rotation.x += 0.0002;
+                    particles.position.y = Math.sin(time) * 5; // Oscilación más suave
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+                const handleResize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+                window.addEventListener('resize', handleResize);
+                return () => { cancelAnimationFrame(reqId); window.removeEventListener('resize', handleResize); geometry.dispose(); material.dispose(); };
+            }, []);
+        };
+
+        const MathBoxWidget = () => {
+            const containerRef = useRef(null);
+            useEffect(() => {
+                if (!containerRef.current) return;
+                const mathbox = mathBox({
+                    element: containerRef.current,
+                    plugins: ['core', 'controls', 'cursor'],
+                    controls: { klass: THREE.OrbitControls }
+                });
+                mathbox.three.renderer.setClearColor(new THREE.Color(0x000000), 0.0);
+                mathbox.three.camera.position.set(2, 1, 3);
+                
+                mathbox.cartesian({ range: [[-3, 3], [-1.5, 1.5], [-3, 3]], scale: [2, 1, 2] })
+                       // Cuadrícula amarilla brillante y más visible
+                       .grid({ axes: [1, 3], width: 4, color: '#FFE600', opacity: 0.6 })
+                       .area({
+                            width: 32, height: 32, axes: [1, 3],
+                            expr: (emit, x, y, i, j, t) => {
+                                // Animación de olas más pronunciada y rápida
+                                const z = Math.sin(x * 2 + t * 2) * Math.cos(y * 2 + t * 2) * 0.6;
+                                emit(x, z, y);
+                            },
+                            channels: 3,
+                       })
+                       // Superficie turquesa de alto contraste
+                       .surface({ shaded: true, color: '#00F0FF', opacity: 0.9, lineX: true, lineY: true });
+
+                return () => { 
+                    mathbox.remove('*'); 
+                    if (mathbox.three && mathbox.three.renderer && typeof mathbox.three.renderer.dispose === 'function') {
+                        mathbox.three.renderer.dispose(); 
+                    }
+                    if (mathbox.three && typeof mathbox.three.destroy === 'function') {
+                        mathbox.three.destroy();
+                    }
+                };
+            }, []);
+            return <div ref={containerRef} className="w-full h-full rounded-3xl overflow-hidden pointer-events-none"></div>;
+        };
+
+        // Gráfico Interactivo Rectangular
+        const InteractiveRectFraction = ({ n, d, onComplete }) => {
+            const [selected, setSelected] = useState([]);
+            
+            // Reiniciar selección si cambian las fracciones
+            useEffect(() => { setSelected([]); }, [n, d]);
+
+            const toggle = (i) => {
+                let newSel;
+                if (selected.includes(i)) {
+                    newSel = selected.filter(x => x !== i);
+                } else {
+                    if (selected.length >= n) return; // No permitir seleccionar más de lo que se gasta
+                    newSel = [...selected, i];
+                    Sounds.click();
+                }
+                setSelected(newSel);
+                
+                if (newSel.length === n) {
+                    Sounds.success();
+                    onComplete(true);
+                } else {
+                    onComplete(false);
+                }
+            };
+
+            return (
+                <div className="flex flex-col items-center gap-5 w-full max-w-md relative">
+                    <div className="text-white font-bold tracking-widest uppercase bg-slate-800/80 px-6 py-3 rounded-full text-sm border-2 border-brand-secondary shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+                        {selected.length < n ? `Pinta ${n - selected.length} parte${(n - selected.length)>1?'s':''} más` : '¡Perfecto! Mira lo que queda 👉'}
+                    </div>
+                    <div className="flex w-full h-32 border-4 border-white rounded-2xl overflow-hidden shadow-[0_0_35px_rgba(0,240,255,0.4)]">
+                        {Array.from({length: d}).map((_, i) => {
+                            const isSpent = selected.includes(i);
+                            return (
+                                <div 
+                                    key={i} 
+                                    onClick={() => toggle(i)}
+                                    className={`flex-1 border-r-4 border-white last:border-r-0 cursor-pointer transition-all duration-300 flex items-center justify-center relative overflow-hidden
+                                        ${isSpent ? 'bg-slate-900 shadow-inner' : 'bg-brand-secondary hover:brightness-125'}`}
+                                >
+                                    {isSpent && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-brand-primary/20 animate-popIn">
+                                            <Icon name="x" size={56} className="text-brand-yellow drop-shadow-[0_0_20px_#FFE600]" strokeWidth={4} />
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // DATA DE EJERCICIOS (Mapeo de Imágenes)
+        // ==========================================
+        const EXERCISES = [
+            {
+                id: "tank", title: "El Tanque de Agua", icon: "droplet", color: "from-brand-secondary to-blue-600",
+                type: "total", finalValue: 30, unit: "L", finalResult: "120 L",
+                statement: "Un tanque de agua está lleno hasta la mitad. Por la mañana se consume 1/4 de lo que había y por la tarde se consume 1/3 del nuevo resto. Si al final quedan 30 litros, ¿cuál es la capacidad total?",
+                initial: { display: "1/2", text: "Mitad", n: 1, d: 2 },
+                steps: [
+                    { action: "Consume", frac: {n:1, d:4}, remain: {n:3, d:4} },
+                    { action: "Consume", frac: {n:1, d:3}, remain: {n:2, d:3} }
+                ],
+                eqRaw: "X \\cdot \\frac{1}{2} \\cdot \\frac{3}{4} \\cdot \\frac{2}{3} = 30",
+                simpVis: "\\frac{1 \\cdot \\cancel{\\color{#FF007A}3} \\cdot \\cancel{\\color{#00F0FF}2}}{\\cancel{\\color{#00F0FF}2} \\cdot 4 \\cdot \\cancel{\\color{#FF007A}3}} \\implies \\frac{1}{4}",
+                resolution: "X \\cdot \\frac{1}{4} = 30 \\implies X = 30 \\cdot 4 = 120"
+            },
+            {
+                id: "bonus", title: "La Bonificación", icon: "briefcase", color: "from-brand-green to-emerald-700",
+                type: "total", finalValue: 2500, unit: "S/", finalResult: "S/ 7500",
+                statement: "Un empresario reparte una bonificación. Al primero le entrega 2/5 del total; al segundo, 1/3 del resto; al tercero, 1/6 del nuevo resto. Al último le corresponden S/2500. ¿Cuál es el total repartido?",
+                initial: { display: "1", text: "Total", n: 1, d: 1 },
+                steps: [
+                    { action: "1º Trab.", frac: {n:2, d:5}, remain: {n:3, d:5} },
+                    { action: "2º Trab.", frac: {n:1, d:3}, remain: {n:2, d:3} },
+                    { action: "3º Trab.", frac: {n:1, d:6}, remain: {n:5, d:6} }
+                ],
+                eqRaw: "X \\cdot \\frac{3}{5} \\cdot \\frac{2}{3} \\cdot \\frac{5}{6} = 2500",
+                simpVis: "\\frac{\\cancel{\\color{#FF007A}3} \\cdot 2 \\cdot \\cancel{\\color{#00FF66}5}}{\\cancel{\\color{#00FF66}5} \\cdot \\cancel{\\color{#FF007A}3} \\cdot 6} = \\frac{2}{6} \\implies \\frac{1}{3}",
+                resolution: "X \\cdot \\frac{1}{3} = 2500 \\implies X = 2500 \\cdot 3 = 7500"
+            },
+            {
+                id: "liquid", title: "Corrector Líquido", icon: "pen-tool", color: "from-brand-tertiary to-purple-800",
+                type: "final", initialValue: 9, unit: "mL", finalResult: "3 mL",
+                statement: "Iván utiliza corrector de 9 mL. En la primera semana ha gastado 1/3; y en la segunda semana, 1/2 del anterior (resto). ¿Cuánto queda del líquido corrector?",
+                initial: { display: "9", text: "Total Inicial", n: 1, d: 1 },
+                steps: [
+                    { action: "1ra Sem.", frac: {n:1, d:3}, remain: {n:2, d:3} },
+                    { action: "2da Sem.", frac: {n:1, d:2}, remain: {n:1, d:2} }
+                ],
+                eqRaw: "9 \\cdot \\frac{2}{3} \\cdot \\frac{1}{2} = \\text{Resto}",
+                simpVis: "9 \\cdot \\frac{\\cancel{\\color{#FF007A}2}}{3 \\cdot \\cancel{\\color{#FF007A}2}} \\implies 9 \\cdot \\frac{1}{3}",
+                resolution: "\\frac{9}{3} = 3"
+            },
+            {
+                id: "shopping", title: "De Compras", icon: "shopping-cart", color: "from-brand-primary to-pink-800",
+                type: "total_spent", finalValue: 150, unit: "S/", finalResult: "S/ 330",
+                statement: "Un comerciante va de compras. 1ra compra gastó 3/8; 2da compra gastó 1/6 del resto; 3ra compra gastó 2/5 del nuevo resto. Le quedó S/150. ¿Cuánto gastó en total?",
+                initial: { display: "1", text: "Total", n: 1, d: 1 },
+                steps: [
+                    { action: "1ra compra", frac: {n:3, d:8}, remain: {n:5, d:8} },
+                    { action: "2da compra", frac: {n:1, d:6}, remain: {n:5, d:6} },
+                    { action: "3ra compra", frac: {n:2, d:5}, remain: {n:3, d:5} }
+                ],
+                eqRaw: "X \\cdot \\frac{5}{8} \\cdot \\frac{5}{6} \\cdot \\frac{3}{5} = 150",
+                simpVis: "\\frac{\\cancel{\\color{#00FF66}5} \\cdot 5 \\cdot \\cancel{\\color{#00F0FF}3}}{8 \\cdot \\cancel{\\color{#00F0FF}6}_2 \\cdot \\cancel{\\color{#00FF66}5}} \\implies \\frac{5}{8 \\cdot 2} = \\frac{5}{16}",
+                resolution: "X \\cdot \\frac{5}{16} = 150 \\implies X = \\frac{150 \\cdot 16}{5} = 480 \\\\ \\text{Gastó: } 480 - 150 = 330"
+            },
+            {
+                id: "wine", title: "Barril de Vino", icon: "glass-water", color: "from-brand-orange to-red-700",
+                type: "final", initialValue: 72, unit: "L", finalResult: "27 L",
+                statement: "De un barril se extrajo 1/4 de vino y luego la mitad de lo que quedaba. ¿Cuántos litros quedaron si al inicio había 72 litros?",
+                initial: { display: "72", text: "Total Inicial", n: 1, d: 1 },
+                steps: [
+                    { action: "1ra extracción", frac: {n:1, d:4}, remain: {n:3, d:4} },
+                    { action: "2da extracción", frac: {n:1, d:2}, remain: {n:1, d:2} }
+                ],
+                eqRaw: "72 \\cdot \\frac{3}{4} \\cdot \\frac{1}{2} = \\text{Resto}",
+                simpVis: "72 \\cdot \\frac{3 \\cdot 1}{4 \\cdot 2} \\implies 72 \\cdot \\frac{3}{8}",
+                resolution: "9 \\cdot 3 = 27"
+            },
+            {
+                id: "money", title: "Dinero Perdido", icon: "piggy-bank", color: "from-brand-yellow to-amber-700",
+                type: "total", finalValue: 100, unit: "S/", finalResult: "S/ 400",
+                statement: "Ayer perdí 3/5 de mi dinero y hoy presté 3/8 de lo que me quedó. Si aún me queda S/ 100. ¿Cuánto dinero tenía?",
+                initial: { display: "1", text: "Total", n: 1, d: 1 },
+                steps: [
+                    { action: "Ayer perdí", frac: {n:3, d:5}, remain: {n:2, d:5} },
+                    { action: "Hoy presté", frac: {n:3, d:8}, remain: {n:5, d:8} }
+                ],
+                eqRaw: "X \\cdot \\frac{2}{5} \\cdot \\frac{5}{8} = 100",
+                simpVis: "\\frac{\\cancel{\\color{#00F0FF}2} \\cdot \\cancel{\\color{#00FF66}5}}{\\cancel{\\color{#00FF66}5} \\cdot \\cancel{\\color{#00F0FF}8}_4} \\implies \\frac{1}{4}",
+                resolution: "X \\cdot \\frac{1}{4} = 100 \\implies X = 400"
+            }
+        ];
+
+        const App = () => {
+            useThreeBackground();
+            const [view, setView] = useState('home');
+            const [exIdx, setExIdx] = useState(0);
+            const [step, setStep] = useState(0);
+            const [isStepCompleted, setIsStepCompleted] = useState(true);
+
+            // Control de bloqueo para el paso interactivo
+            useEffect(() => {
+                if (view === 'lab' && step > 0 && step <= EXERCISES[exIdx].steps.length) {
+                    setIsStepCompleted(false);
+                } else {
+                    setIsStepCompleted(true);
+                }
+            }, [step, exIdx, view]);
+
+            const loadExercise = (idx) => { Sounds.magic(); setExIdx(idx); setStep(0); setView('lab'); };
+            const goHome = () => { Sounds.click(); setView('home'); };
+            
+            const ex = EXERCISES[exIdx];
+            const maxSteps = ex.steps.length + 3; // Intro, ...steps, Eq, Simp, Result
+
+            const nextStep = () => { 
+                if (step < maxSteps) { Sounds.pop(); setStep(s => s + 1); }
+                else { Sounds.success(); goHome(); }
+            };
+            const prevStep = () => { if (step > 0) { Sounds.click(); setStep(s => s - 1); } };
+
+            useEffect(() => { gsap.fromTo(".anim-slide", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "back.out(1.2)"}); }, [view, step]);
+
+            // ==========================================
+            // VISTA: HUB (Menú Principal)
+            // ==========================================
+            if (view === 'home') {
+                return (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-7xl mx-auto w-full z-10">
+                        <div className="flex flex-col items-center mb-12 anim-slide">
+                            <div className="flex gap-12 items-center mb-6">
+                                <AnimatedRobot size={150} />
+                                <div className="w-64 h-64 bg-slate-900/50 rounded-full border-4 border-brand-secondary shadow-[0_0_30px_#00F0FF] p-4 flex items-center justify-center relative overflow-hidden">
+                                    <MathBoxWidget />
+                                </div>
+                            </div>
+                            <h1 className="font-display text-5xl md:text-7xl font-black text-white neon-text uppercase tracking-widest text-center">TuProfe20 <span className="text-brand-secondary">Lab</span></h1>
+                            <p className="text-2xl text-brand-yellow font-bold mt-4 tracking-widest uppercase">Método: Lo Que Queda</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full anim-slide">
+                            {EXERCISES.map((exercise, idx) => (
+                                <button key={idx} onClick={() => loadExercise(idx)} className={`bouncy-hover relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br ${exercise.color} p-1 text-left`}>
+                                    <div className="h-full w-full bg-slate-900/90 rounded-[2.2rem] p-8 flex flex-col glass-panel">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="p-4 bg-white/10 rounded-2xl text-white shadow-inner"><Icon name={exercise.icon} size={32} /></div>
+                                            <span className="text-sm font-black px-4 py-1.5 bg-white/10 rounded-full text-white tracking-widest border border-white/20">Misión {idx + 1}</span>
+                                        </div>
+                                        <h3 className="text-3xl font-display font-black text-white mb-4 leading-tight">{exercise.title}</h3>
+                                        <p className="text-slate-400 font-medium line-clamp-3 mt-auto">{exercise.statement}</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            // ==========================================
+            // VISTA: LABORATORIO (Paso a Paso)
+            // ==========================================
+            let robotMsg = "";
+            let boardContent = null;
+
+            if (step === 0) {
+                robotMsg = `¡Análisis Inicial! El método "Lo que queda" ignora lo que gastas y se enfoca en las partes sobrantes. Partimos de:`;
+                boardContent = (
+                    <div className="flex flex-col items-center justify-center h-full text-center anim-slide">
+                        <Icon name="target" size={80} className="text-brand-secondary mb-8 animate-pulseGlow" />
+                        <div className="text-7xl font-black text-brand-secondary neon-text"><MathTex tex={ex.initial.display} /></div>
+                        <div className="text-2xl text-slate-300 font-bold mt-6 uppercase tracking-widest">{ex.initial.text}</div>
+                    </div>
+                );
+            } else if (step > 0 && step <= ex.steps.length) {
+                const sData = ex.steps[step - 1];
+                robotMsg = `Etapa ${step}: Si ${sData.action} la fracción en rojo. ¡Haz clic en los bloques celestes para pintarlos y descubrir visualmente cuánto sobra!`;
+                boardContent = (
+                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide">
+                        <div className="text-brand-secondary font-black text-3xl uppercase tracking-widest mb-10">{sData.action}</div>
+                        <div className="flex flex-col xl:flex-row items-center gap-12 glass-panel p-10 rounded-[3rem] border-4 border-slate-600 w-full max-w-5xl justify-center shadow-2xl relative">
+                            
+                            <div className="flex flex-col items-center shrink-0">
+                                <span className="text-brand-primary font-bold uppercase text-lg mb-4">Gasta</span>
+                                <div className="text-6xl font-black text-brand-primary"><MathTex tex={`\\frac{${sData.frac.n}}{${sData.frac.d}}`} /></div>
+                            </div>
+                            
+                            {/* Gráfico Interactivo Rectangular */}
+                            <InteractiveRectFraction 
+                                n={sData.frac.n} 
+                                d={sData.frac.d} 
+                                onComplete={(status) => setIsStepCompleted(status)} 
+                            />
+                            
+                            <div className={`flex flex-col items-center transition-all duration-700 w-32 shrink-0 ${isStepCompleted ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
+                                <span className="text-brand-secondary font-bold uppercase text-lg mb-4 animate-pulse">¡Queda!</span>
+                                <div className="text-7xl font-black text-brand-secondary neon-text"><MathTex tex={`\\frac{${sData.remain.n}}{${sData.remain.d}}`} /></div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            } else if (step === ex.steps.length + 1) {
+                robotMsg = `¡Construimos la ecuación multiplicando todos los restos sucesivos por el Total inicial!`;
+                boardContent = (
+                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center">
+                        <div className="text-slate-400 font-bold uppercase tracking-widest mb-8 border border-slate-600 px-6 py-2 rounded-full">Planteando Ecuación</div>
+                        <div className="glass-panel p-12 rounded-[3rem] border-4 border-brand-yellow shadow-[0_0_50px_rgba(255,230,0,0.3)]">
+                            <div className="text-5xl md:text-7xl font-black text-white"><MathTex tex={ex.eqRaw} /></div>
+                        </div>
+                    </div>
+                );
+            } else if (step === ex.steps.length + 2) {
+                robotMsg = `¡El truco de oro! Simplificamos cruzado ANTES de multiplicar. Así trabajamos con números pequeños.`;
+                boardContent = (
+                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center">
+                        <div className="text-brand-secondary font-bold uppercase tracking-widest mb-8 bg-brand-secondary/20 border border-brand-secondary px-8 py-3 rounded-full animate-pulseGlow">Simplificación Rápida</div>
+                        <div className="glass-panel p-12 rounded-[3rem] border-4 border-brand-secondary shadow-[0_0_50px_rgba(0,240,255,0.4)] mb-8">
+                            <div className="text-5xl md:text-7xl font-black text-white"><MathTex tex={ex.simpVis} /></div>
+                        </div>
+                    </div>
+                );
+            } else if (step === ex.steps.length + 3) {
+                robotMsg = ex.type === 'total_spent' 
+                    ? `Resolvemos para encontrar el total, y luego restamos lo que le quedó para hallar lo que Gastó. ¡Misión cumplida!`
+                    : `¡Ecuación reducida! Operamos para encontrar la respuesta final. ¡Gran trabajo!`;
+                boardContent = (
+                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center">
+                        <Icon name="award" size={100} className="text-brand-yellow mb-8 drop-shadow-[0_0_20px_rgba(255,230,0,0.8)]" />
+                        <div className="text-4xl md:text-6xl font-black mb-12 glass-panel p-10 rounded-[3rem] border-4 border-slate-600"><MathTex tex={ex.resolution} /></div>
+                        
+                        <div className="bg-gradient-to-r from-brand-green to-emerald-600 text-slate-900 px-16 py-8 rounded-[3rem] border-8 border-white shadow-[0_0_50px_rgba(0,255,102,0.8)] transform -rotate-2 hover:rotate-0 transition-transform">
+                            <div className="text-xl font-black uppercase tracking-widest mb-2 opacity-80">Respuesta Final</div>
+                            <div className="text-7xl font-black">{ex.finalResult}</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const progress = (step / maxSteps) * 100;
+            const isLast = step === maxSteps;
+
+            return (
+                <div className="flex-1 flex flex-col w-full max-w-[1600px] mx-auto p-6 lg:p-8 z-10 min-h-[100dvh]">
+                    
+                    {/* Header */}
+                    <div className="flex items-center justify-between glass-panel p-4 rounded-[2rem] border-2 border-white/20 mb-6 shrink-0">
+                        <button onClick={goHome} className="bouncy-hover flex items-center gap-3 px-6 py-3 bg-white/10 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-white/20 transition-colors">
+                            <Icon name="arrow-left" size={20} /> <span className="hidden sm:inline">Misiones</span>
+                        </button>
+                        <div className="flex items-center gap-4">
+                            <div className="bg-brand-primary/20 p-3 rounded-xl text-brand-primary border border-brand-primary/50"><Icon name={ex.icon} size={28} /></div>
+                            <h2 className="font-display font-black text-2xl md:text-3xl neon-text">{ex.title}</h2>
+                        </div>
+                        <div className="w-[100px]"></div> {/* Spacer */}
+                    </div>
+
+                    {/* Enunciado */}
+                    <div className="glass-panel rounded-[2.5rem] p-6 md:p-8 mb-8 border-l-[8px] border-brand-secondary shadow-[0_10px_40px_rgba(0,0,0,0.5)] shrink-0">
+                        <h3 className="text-sm font-black uppercase text-brand-secondary tracking-widest mb-3 flex items-center gap-2"><Icon name="file-text" size={18} /> Datos del Problema</h3>
+                        <p className="text-xl md:text-3xl text-slate-200 font-bold leading-relaxed">{ex.statement}</p>
+                    </div>
+
+                    {/* Contenido Principal */}
+                    <div className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0">
+                        
+                        {/* Robot Column */}
+                        <div className="lg:w-[400px] flex flex-col gap-8 items-center shrink-0">
+                            <div className="drop-shadow-[0_0_40px_rgba(0,240,255,0.4)]">
+                                <AnimatedRobot size={250} />
+                            </div>
+                            <div className="glass-panel w-full p-8 rounded-[3rem] border-t-[8px] border-brand-tertiary relative shadow-2xl text-center">
+                                <div className="absolute -top-[22px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[15px] border-l-transparent border-b-[22px] border-b-brand-tertiary border-r-[15px] border-r-transparent"></div>
+                                <p className="text-2xl text-white font-bold leading-relaxed">{robotMsg}</p>
+                            </div>
+                        </div>
+
+                        {/* Pizarra Column (Con Grid) */}
+                        <div className="flex-1 glass-panel grid-board rounded-[3rem] border-4 border-slate-600 shadow-inner relative flex flex-col overflow-hidden">
+                            {/* Barra de Progreso */}
+                            <div className="w-full h-3 bg-slate-900 absolute top-0 left-0 z-20">
+                                <div className="h-full bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-green transition-all duration-700 ease-out shadow-[0_0_20px_#00F0FF]" style={{width: `${progress}%`}}></div>
+                            </div>
+
+                            {/* Área Matemática */}
+                            <div className="flex-1 overflow-y-auto p-8 relative pt-12 z-10">
+                                {boardContent}
+                            </div>
+
+                            {/* Controles Inferiores */}
+                            <div className="bg-slate-900/90 p-8 border-t-4 border-slate-700 flex justify-between items-center z-20 shrink-0">
+                                <button onClick={prevStep} disabled={step === 0} 
+                                    className="bouncy-hover flex items-center gap-2 px-8 py-5 rounded-2xl bg-slate-800 text-slate-300 font-black uppercase tracking-widest hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-all">
+                                    <Icon name="chevron-left" size={28} strokeWidth={3} /> Atrás
+                                </button>
+                                
+                                <div className="font-black text-brand-secondary px-8 py-3 rounded-full border-2 border-brand-secondary/30 tracking-widest uppercase text-xl shadow-[0_0_15px_rgba(0,240,255,0.2)]">
+                                    Paso {step} / {maxSteps}
+                                </div>
+
+                                <button onClick={nextStep} disabled={!isStepCompleted}
+                                    className={`bouncy-hover flex items-center gap-3 px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-white transition-all shadow-xl disabled:opacity-30 disabled:pointer-events-none disabled:grayscale ${isLast ? 'bg-gradient-to-r from-brand-green to-emerald-500 shadow-[0_0_40px_rgba(0,255,102,0.5)] text-slate-900' : 'bg-gradient-to-r from-brand-primary to-pink-600 shadow-[0_0_40px_rgba(255,0,122,0.5)]'}`}>
+                                    {isLast ? '¡Finalizar!' : 'Siguiente'} <Icon name={isLast ? 'check-circle' : 'chevron-right'} size={28} strokeWidth={3} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

@@ -16,15 +16,15 @@
     <!-- Fuentes -->
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700;900&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
     
-    <!-- KaTeX (Con extensión cancel para la simplificación) -->
+    <!-- KaTeX -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/cancel.min.js"></script>
     
-    <!-- GSAP para animaciones UI -->
+    <!-- GSAP -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
 
-    <!-- MathBox (Incluye Three.js interno, por lo que usaremos su instancia global THREE para el fondo puro) -->
+    <!-- MathBox -->
     <link rel="stylesheet" href="https://unpkg.com/mathbox@0.1.0/build/mathbox.css">
     <script src="https://unpkg.com/mathbox@0.1.0/build/mathbox-bundle.js"></script>
 
@@ -57,13 +57,10 @@
         :root { --c-primary: #FF007A; --c-secondary: #00F0FF; --c-green: #00FF66; --c-yellow: #FFE600; }
         body { font-family: 'Nunito', sans-serif; background-color: #05070A; color: #fff; margin: 0; overflow-x: hidden; touch-action: manipulation; }
         
-        /* Contenedor del fondo dinámico de Three.js */
         #canvas-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -10; pointer-events: none; }
         
-        /* Efecto Cristal */
         .glass-panel { background: rgba(10, 15, 25, 0.75); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
         
-        /* Fondo Cuadriculado con opacidad 0.10 solicitado */
         .grid-board {
             background-color: rgba(5, 7, 10, 0.8);
             background-image: 
@@ -78,11 +75,9 @@
         .bouncy-hover:hover { transform: translateY(-5px) scale(1.03); }
         .bouncy-hover:active { transform: translateY(2px) scale(0.97); }
 
-        /* KaTeX overrides para mejor visibilidad */
         .katex-html { font-weight: 900; text-shadow: 0 0 8px rgba(255,255,255,0.3); }
-        .katex { font-size: 1.2em !important; font-family: 'Fredoka', sans-serif !important; }
+        .katex { font-size: 1.1em !important; font-family: 'Fredoka', sans-serif !important; }
         
-        /* Robot Animations */
         .robot-float { animation: robotFloat 3s ease-in-out infinite; }
         .robot-glow { animation: robotGlow 2s ease-in-out infinite alternate; }
         .robot-blink { animation: robotBlink 4s infinite; transform-origin: center; }
@@ -90,16 +85,17 @@
         @keyframes robotGlow { from { filter: drop-shadow(0 0 8px #00F0FF); } to { filter: drop-shadow(0 0 25px #00F0FF); } }
         @keyframes robotBlink { 0%, 45%, 55%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
         
-        /* JSXGraph Overrides para estilo Dark/Neon */
         .jxgbox { border: none !important; border-radius: 50%; overflow: hidden; background: transparent !important;}
         .JXGtext { font-family: 'Fredoka', sans-serif !important; font-weight: bold !important; color: white !important; }
+        
+        /* Ocultar barra de scroll para elementos deslizables en móvil */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
-    <!-- Background Canvas for Three.js -->
     <canvas id="canvas-bg"></canvas>
     
-    <!-- React Root -->
     <div id="root" class="relative z-10 w-full min-h-[100dvh] flex flex-col"></div>
 
     <script type="text/babel">
@@ -148,8 +144,9 @@
             return <span ref={elRef} className={className}></span>;
         };
 
-        const AnimatedRobot = ({ size = 150 }) => (
-            <svg width={size} height={size} viewBox="0 0 100 100" className="overflow-visible" xmlns="http://www.w3.org/2000/svg">
+        // Ajustado para ser responsive basado en su contenedor (w-full h-full)
+        const AnimatedRobot = ({ className = "w-32 h-32" }) => (
+            <svg viewBox="0 0 100 100" className={`overflow-visible ${className}`} xmlns="http://www.w3.org/2000/svg">
                 <g className="robot-float">
                     <line x1="50" y1="25" x2="50" y2="10" stroke="#94A3B8" strokeWidth="4" strokeLinecap="round" />
                     <circle cx="50" cy="8" r="5" fill="#FF007A" className="animate-pulse" />
@@ -173,19 +170,16 @@
         const useThreeBackground = () => {
             useEffect(() => {
                 const canvas = document.getElementById('canvas-bg');
-                // Usar el THREE global expuesto por MathBox bundle
                 const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 const scene = new THREE.Scene();
                 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
                 camera.position.z = 200;
 
-                // Partículas Dinámicas
                 const geometry = new THREE.BufferGeometry();
-                const count = 250; // Reducido para ser más sutil y no distraer
+                const count = window.innerWidth < 768 ? 100 : 250; // Menos partículas en móvil
                 const positions = new Float32Array(count * 3);
                 const colors = new Float32Array(count * 3);
-                // Colores de alto contraste: Turquesa, Amarillo Neón, Blanco
                 const colorPalette = [new THREE.Color('#00F0FF'), new THREE.Color('#FFE600'), new THREE.Color('#FFFFFF')];
                 
                 for(let i=0; i<count; i++) {
@@ -200,23 +194,19 @@
                     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
                     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
                 } else if (typeof geometry.addAttribute === 'function') {
-                    // Fallback para la versión antigua de Three.js incluida en MathBox
                     geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
                     geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
                 }
                 
-                // Compatibilidad de Nombres para la versión antigua de Three.js (r69) de MathBox
                 const MaterialClass = THREE.PointsMaterial || THREE.PointCloudMaterial || THREE.ParticleBasicMaterial;
                 const PointsClass = THREE.Points || THREE.PointCloud || THREE.ParticleSystem;
-                
-                // En versiones antiguas vertexColors espera una constante (THREE.VertexColors = 2)
                 const vColor = THREE.VertexColors !== undefined ? THREE.VertexColors : 2;
 
                 const material = new MaterialClass({ 
-                    size: 2.0, // Tamaño reducido (más sutil)
+                    size: window.innerWidth < 768 ? 1.5 : 2.0, 
                     vertexColors: vColor, 
                     transparent: true, 
-                    opacity: 0.35, // Opacidad baja para que quede verdaderamente en el fondo
+                    opacity: 0.35, 
                     blending: THREE.AdditiveBlending 
                 });
                 
@@ -227,11 +217,10 @@
                 let time = 0;
                 const animate = () => {
                     reqId = requestAnimationFrame(animate);
-                    time += 0.005; // Incremento de tiempo más lento
-                    // Movimiento mucho más lento y relajante
+                    time += 0.005; 
                     particles.rotation.y += 0.0005;
                     particles.rotation.x += 0.0002;
-                    particles.position.y = Math.sin(time) * 5; // Oscilación más suave
+                    particles.position.y = Math.sin(time) * 5; 
                     renderer.render(scene, camera);
                 };
                 animate();
@@ -255,18 +244,15 @@
                 mathbox.three.camera.position.set(2, 1, 3);
                 
                 mathbox.cartesian({ range: [[-3, 3], [-1.5, 1.5], [-3, 3]], scale: [2, 1, 2] })
-                       // Cuadrícula amarilla brillante y más visible
                        .grid({ axes: [1, 3], width: 4, color: '#FFE600', opacity: 0.6 })
                        .area({
                             width: 32, height: 32, axes: [1, 3],
                             expr: (emit, x, y, i, j, t) => {
-                                // Animación de olas más pronunciada y rápida
                                 const z = Math.sin(x * 2 + t * 2) * Math.cos(y * 2 + t * 2) * 0.6;
                                 emit(x, z, y);
                             },
                             channels: 3,
                        })
-                       // Superficie turquesa de alto contraste
                        .surface({ shaded: true, color: '#00F0FF', opacity: 0.9, lineX: true, lineY: true });
 
                 return () => { 
@@ -282,11 +268,10 @@
             return <div ref={containerRef} className="w-full h-full rounded-3xl overflow-hidden pointer-events-none"></div>;
         };
 
-        // Gráfico Interactivo Rectangular
+        // Gráfico Interactivo Rectangular (Ajustado Responsive)
         const InteractiveRectFraction = ({ n, d, onComplete }) => {
             const [selected, setSelected] = useState([]);
             
-            // Reiniciar selección si cambian las fracciones
             useEffect(() => { setSelected([]); }, [n, d]);
 
             const toggle = (i) => {
@@ -294,7 +279,7 @@
                 if (selected.includes(i)) {
                     newSel = selected.filter(x => x !== i);
                 } else {
-                    if (selected.length >= n) return; // No permitir seleccionar más de lo que se gasta
+                    if (selected.length >= n) return;
                     newSel = [...selected, i];
                     Sounds.click();
                 }
@@ -309,23 +294,23 @@
             };
 
             return (
-                <div className="flex flex-col items-center gap-5 w-full max-w-md relative">
-                    <div className="text-white font-bold tracking-widest uppercase bg-slate-800/80 px-6 py-3 rounded-full text-sm border-2 border-brand-secondary shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+                <div className="flex flex-col items-center gap-3 md:gap-5 w-full max-w-md relative">
+                    <div className="text-white font-bold tracking-widest uppercase bg-slate-800/80 px-4 py-2 md:px-6 md:py-3 rounded-full text-xs md:text-sm border-2 border-brand-secondary shadow-[0_0_15px_rgba(0,240,255,0.3)] text-center">
                         {selected.length < n ? `Pinta ${n - selected.length} parte${(n - selected.length)>1?'s':''} más` : '¡Perfecto! Mira lo que queda 👉'}
                     </div>
-                    <div className="flex w-full h-32 border-4 border-white rounded-2xl overflow-hidden shadow-[0_0_35px_rgba(0,240,255,0.4)]">
+                    <div className="flex w-full h-16 md:h-24 lg:h-32 border-2 md:border-4 border-white rounded-xl md:rounded-2xl overflow-hidden shadow-[0_0_35px_rgba(0,240,255,0.4)]">
                         {Array.from({length: d}).map((_, i) => {
                             const isSpent = selected.includes(i);
                             return (
                                 <div 
                                     key={i} 
                                     onClick={() => toggle(i)}
-                                    className={`flex-1 border-r-4 border-white last:border-r-0 cursor-pointer transition-all duration-300 flex items-center justify-center relative overflow-hidden
+                                    className={`flex-1 border-r-2 md:border-r-4 border-white last:border-r-0 cursor-pointer transition-all duration-300 flex items-center justify-center relative overflow-hidden
                                         ${isSpent ? 'bg-slate-900 shadow-inner' : 'bg-brand-secondary hover:brightness-125'}`}
                                 >
                                     {isSpent && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-brand-primary/20 animate-popIn">
-                                            <Icon name="x" size={56} className="text-brand-yellow drop-shadow-[0_0_20px_#FFE600]" strokeWidth={4} />
+                                            <Icon name="x" size={32} className="md:w-14 md:h-14 text-brand-yellow drop-shadow-[0_0_20px_#FFE600]" strokeWidth={4} />
                                         </div>
                                     )}
                                 </div>
@@ -337,13 +322,13 @@
         };
 
         // ==========================================
-        // DATA DE EJERCICIOS (Mapeo de Imágenes)
+        // DATA DE EJERCICIOS
         // ==========================================
         const EXERCISES = [
             {
-                id: "tank", title: "El Tanque de Agua", icon: "droplet", color: "from-brand-secondary to-blue-600",
+                id: "tank", title: "El Tanque", icon: "droplet", color: "from-brand-secondary to-blue-600",
                 type: "total", finalValue: 30, unit: "L", finalResult: "120 L",
-                statement: "Un tanque de agua está lleno hasta la mitad. Por la mañana se consume 1/4 de lo que había y por la tarde se consume 1/3 del nuevo resto. Si al final quedan 30 litros, ¿cuál es la capacidad total?",
+                statement: "Un tanque está lleno hasta la mitad. Por la mañana se consume 1/4 de lo que había y por la tarde se consume 1/3 del nuevo resto. Si al final quedan 30 L, ¿cuál es la capacidad total?",
                 initial: { display: "1/2", text: "Mitad", n: 1, d: 2 },
                 steps: [
                     { action: "Consume", frac: {n:1, d:4}, remain: {n:3, d:4} },
@@ -354,9 +339,9 @@
                 resolution: "X \\cdot \\frac{1}{4} = 30 \\implies X = 30 \\cdot 4 = 120"
             },
             {
-                id: "bonus", title: "La Bonificación", icon: "briefcase", color: "from-brand-green to-emerald-700",
+                id: "bonus", title: "Bonificación", icon: "briefcase", color: "from-brand-green to-emerald-700",
                 type: "total", finalValue: 2500, unit: "S/", finalResult: "S/ 7500",
-                statement: "Un empresario reparte una bonificación. Al primero le entrega 2/5 del total; al segundo, 1/3 del resto; al tercero, 1/6 del nuevo resto. Al último le corresponden S/2500. ¿Cuál es el total repartido?",
+                statement: "Un empresario reparte un bono. Al 1º le da 2/5 del total; al 2º, 1/3 del resto; al 3º, 1/6 del nuevo resto. Al último le da S/2500. ¿Cuál es el total?",
                 initial: { display: "1", text: "Total", n: 1, d: 1 },
                 steps: [
                     { action: "1º Trab.", frac: {n:2, d:5}, remain: {n:3, d:5} },
@@ -368,9 +353,9 @@
                 resolution: "X \\cdot \\frac{1}{3} = 2500 \\implies X = 2500 \\cdot 3 = 7500"
             },
             {
-                id: "liquid", title: "Corrector Líquido", icon: "pen-tool", color: "from-brand-tertiary to-purple-800",
+                id: "liquid", title: "Corrector", icon: "pen-tool", color: "from-brand-tertiary to-purple-800",
                 type: "final", initialValue: 9, unit: "mL", finalResult: "3 mL",
-                statement: "Iván utiliza corrector de 9 mL. En la primera semana ha gastado 1/3; y en la segunda semana, 1/2 del anterior (resto). ¿Cuánto queda del líquido corrector?",
+                statement: "Iván usa corrector de 9 mL. En la 1ra semana gasta 1/3; y en la 2da semana, 1/2 del anterior (resto). ¿Cuánto queda del líquido?",
                 initial: { display: "9", text: "Total Inicial", n: 1, d: 1 },
                 steps: [
                     { action: "1ra Sem.", frac: {n:1, d:3}, remain: {n:2, d:3} },
@@ -383,7 +368,7 @@
             {
                 id: "shopping", title: "De Compras", icon: "shopping-cart", color: "from-brand-primary to-pink-800",
                 type: "total_spent", finalValue: 150, unit: "S/", finalResult: "S/ 330",
-                statement: "Un comerciante va de compras. 1ra compra gastó 3/8; 2da compra gastó 1/6 del resto; 3ra compra gastó 2/5 del nuevo resto. Le quedó S/150. ¿Cuánto gastó en total?",
+                statement: "1ra compra: gasta 3/8; 2da compra: 1/6 del resto; 3ra compra: 2/5 del nuevo resto. Le quedó S/150. ¿Cuánto gastó en total?",
                 initial: { display: "1", text: "Total", n: 1, d: 1 },
                 steps: [
                     { action: "1ra compra", frac: {n:3, d:8}, remain: {n:5, d:8} },
@@ -392,23 +377,23 @@
                 ],
                 eqRaw: "X \\cdot \\frac{5}{8} \\cdot \\frac{5}{6} \\cdot \\frac{3}{5} = 150",
                 simpVis: "\\frac{\\cancel{\\color{#00FF66}5} \\cdot 5 \\cdot \\cancel{\\color{#00F0FF}3}}{8 \\cdot \\cancel{\\color{#00F0FF}6}_2 \\cdot \\cancel{\\color{#00FF66}5}} \\implies \\frac{5}{8 \\cdot 2} = \\frac{5}{16}",
-                resolution: "X \\cdot \\frac{5}{16} = 150 \\implies X = \\frac{150 \\cdot 16}{5} = 480 \\\\ \\text{Gastó: } 480 - 150 = 330"
+                resolution: "X \\cdot \\frac{5}{16} = 150 \\implies X = 480 \\\\ \\text{Gastó: } 480 - 150 = 330"
             },
             {
-                id: "wine", title: "Barril de Vino", icon: "glass-water", color: "from-brand-orange to-red-700",
+                id: "wine", title: "Barril Vino", icon: "glass-water", color: "from-brand-orange to-red-700",
                 type: "final", initialValue: 72, unit: "L", finalResult: "27 L",
                 statement: "De un barril se extrajo 1/4 de vino y luego la mitad de lo que quedaba. ¿Cuántos litros quedaron si al inicio había 72 litros?",
                 initial: { display: "72", text: "Total Inicial", n: 1, d: 1 },
                 steps: [
-                    { action: "1ra extracción", frac: {n:1, d:4}, remain: {n:3, d:4} },
-                    { action: "2da extracción", frac: {n:1, d:2}, remain: {n:1, d:2} }
+                    { action: "1ra extrac.", frac: {n:1, d:4}, remain: {n:3, d:4} },
+                    { action: "2da extrac.", frac: {n:1, d:2}, remain: {n:1, d:2} }
                 ],
                 eqRaw: "72 \\cdot \\frac{3}{4} \\cdot \\frac{1}{2} = \\text{Resto}",
                 simpVis: "72 \\cdot \\frac{3 \\cdot 1}{4 \\cdot 2} \\implies 72 \\cdot \\frac{3}{8}",
                 resolution: "9 \\cdot 3 = 27"
             },
             {
-                id: "money", title: "Dinero Perdido", icon: "piggy-bank", color: "from-brand-yellow to-amber-700",
+                id: "money", title: "Dinero", icon: "piggy-bank", color: "from-brand-yellow to-amber-700",
                 type: "total", finalValue: 100, unit: "S/", finalResult: "S/ 400",
                 statement: "Ayer perdí 3/5 de mi dinero y hoy presté 3/8 de lo que me quedó. Si aún me queda S/ 100. ¿Cuánto dinero tenía?",
                 initial: { display: "1", text: "Total", n: 1, d: 1 },
@@ -429,7 +414,6 @@
             const [step, setStep] = useState(0);
             const [isStepCompleted, setIsStepCompleted] = useState(true);
 
-            // Control de bloqueo para el paso interactivo
             useEffect(() => {
                 if (view === 'lab' && step > 0 && step <= EXERCISES[exIdx].steps.length) {
                     setIsStepCompleted(false);
@@ -442,7 +426,7 @@
             const goHome = () => { Sounds.click(); setView('home'); };
             
             const ex = EXERCISES[exIdx];
-            const maxSteps = ex.steps.length + 3; // Intro, ...steps, Eq, Simp, Result
+            const maxSteps = ex.steps.length + 3;
 
             const nextStep = () => { 
                 if (step < maxSteps) { Sounds.pop(); setStep(s => s + 1); }
@@ -457,28 +441,28 @@
             // ==========================================
             if (view === 'home') {
                 return (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-7xl mx-auto w-full z-10">
-                        <div className="flex flex-col items-center mb-12 anim-slide">
-                            <div className="flex gap-12 items-center mb-6">
-                                <AnimatedRobot size={150} />
-                                <div className="w-64 h-64 bg-slate-900/50 rounded-full border-4 border-brand-secondary shadow-[0_0_30px_#00F0FF] p-4 flex items-center justify-center relative overflow-hidden">
+                    <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 max-w-7xl mx-auto w-full z-10 py-10">
+                        <div className="flex flex-col items-center mb-8 md:mb-12 anim-slide">
+                            <div className="flex flex-col md:flex-row gap-6 md:gap-12 items-center mb-6">
+                                <AnimatedRobot className="w-32 h-32 md:w-40 md:h-40" />
+                                <div className="w-40 h-40 md:w-64 md:h-64 bg-slate-900/50 rounded-full border-4 border-brand-secondary shadow-[0_0_30px_#00F0FF] p-2 md:p-4 flex items-center justify-center relative overflow-hidden">
                                     <MathBoxWidget />
                                 </div>
                             </div>
-                            <h1 className="font-display text-5xl md:text-7xl font-black text-white neon-text uppercase tracking-widest text-center">TuProfe20 <span className="text-brand-secondary">Lab</span></h1>
-                            <p className="text-2xl text-brand-yellow font-bold mt-4 tracking-widest uppercase">Método: Lo Que Queda</p>
+                            <h1 className="font-display text-4xl md:text-7xl font-black text-white neon-text uppercase tracking-widest text-center leading-tight">TuProfe20 <br className="md:hidden"/><span className="text-brand-secondary">Lab</span></h1>
+                            <p className="text-lg md:text-2xl text-brand-yellow font-bold mt-2 md:mt-4 tracking-widest uppercase text-center">Método: Lo Que Queda</p>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full anim-slide">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full anim-slide px-2">
                             {EXERCISES.map((exercise, idx) => (
-                                <button key={idx} onClick={() => loadExercise(idx)} className={`bouncy-hover relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br ${exercise.color} p-1 text-left`}>
-                                    <div className="h-full w-full bg-slate-900/90 rounded-[2.2rem] p-8 flex flex-col glass-panel">
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="p-4 bg-white/10 rounded-2xl text-white shadow-inner"><Icon name={exercise.icon} size={32} /></div>
-                                            <span className="text-sm font-black px-4 py-1.5 bg-white/10 rounded-full text-white tracking-widest border border-white/20">Misión {idx + 1}</span>
+                                <button key={idx} onClick={() => loadExercise(idx)} className={`bouncy-hover relative overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br ${exercise.color} p-1 text-left`}>
+                                    <div className="h-full w-full bg-slate-900/90 rounded-[1.8rem] md:rounded-[2.2rem] p-6 md:p-8 flex flex-col glass-panel">
+                                        <div className="flex justify-between items-start mb-4 md:mb-6">
+                                            <div className="p-3 md:p-4 bg-white/10 rounded-xl md:rounded-2xl text-white shadow-inner"><Icon name={exercise.icon} size={24} className="md:w-8 md:h-8" /></div>
+                                            <span className="text-xs md:text-sm font-black px-3 py-1 md:px-4 md:py-1.5 bg-white/10 rounded-full text-white tracking-widest border border-white/20">Misión {idx + 1}</span>
                                         </div>
-                                        <h3 className="text-3xl font-display font-black text-white mb-4 leading-tight">{exercise.title}</h3>
-                                        <p className="text-slate-400 font-medium line-clamp-3 mt-auto">{exercise.statement}</p>
+                                        <h3 className="text-2xl md:text-3xl font-display font-black text-white mb-2 md:mb-4 leading-tight">{exercise.title}</h3>
+                                        <p className="text-sm md:text-base text-slate-400 font-medium line-clamp-3 mt-auto">{exercise.statement}</p>
                                     </div>
                                 </button>
                             ))}
@@ -497,34 +481,33 @@
                 robotMsg = `¡Análisis Inicial! El método "Lo que queda" ignora lo que gastas y se enfoca en las partes sobrantes. Partimos de:`;
                 boardContent = (
                     <div className="flex flex-col items-center justify-center h-full text-center anim-slide">
-                        <Icon name="target" size={80} className="text-brand-secondary mb-8 animate-pulseGlow" />
-                        <div className="text-7xl font-black text-brand-secondary neon-text"><MathTex tex={ex.initial.display} /></div>
-                        <div className="text-2xl text-slate-300 font-bold mt-6 uppercase tracking-widest">{ex.initial.text}</div>
+                        <Icon name="target" size={60} className="md:w-20 md:h-20 text-brand-secondary mb-6 md:mb-8 animate-pulseGlow" />
+                        <div className="text-5xl md:text-7xl font-black text-brand-secondary neon-text"><MathTex tex={ex.initial.display} /></div>
+                        <div className="text-xl md:text-2xl text-slate-300 font-bold mt-4 md:mt-6 uppercase tracking-widest">{ex.initial.text}</div>
                     </div>
                 );
             } else if (step > 0 && step <= ex.steps.length) {
                 const sData = ex.steps[step - 1];
-                robotMsg = `Etapa ${step}: Si ${sData.action} la fracción en rojo. ¡Haz clic en los bloques celestes para pintarlos y descubrir visualmente cuánto sobra!`;
+                robotMsg = `Etapa ${step}: Si ${sData.action} la fracción en rojo. ¡Pinta los bloques para ver cuánto sobra!`;
                 boardContent = (
                     <div className="flex flex-col items-center justify-center h-full w-full anim-slide">
-                        <div className="text-brand-secondary font-black text-3xl uppercase tracking-widest mb-10">{sData.action}</div>
-                        <div className="flex flex-col xl:flex-row items-center gap-12 glass-panel p-10 rounded-[3rem] border-4 border-slate-600 w-full max-w-5xl justify-center shadow-2xl relative">
+                        <div className="text-brand-secondary font-black text-xl md:text-3xl uppercase tracking-widest mb-6 md:mb-10 text-center">{sData.action}</div>
+                        <div className="flex flex-col lg:flex-row items-center gap-6 md:gap-12 glass-panel p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border-2 md:border-4 border-slate-600 w-full max-w-5xl justify-center shadow-2xl relative">
                             
                             <div className="flex flex-col items-center shrink-0">
-                                <span className="text-brand-primary font-bold uppercase text-lg mb-4">Gasta</span>
-                                <div className="text-6xl font-black text-brand-primary"><MathTex tex={`\\frac{${sData.frac.n}}{${sData.frac.d}}`} /></div>
+                                <span className="text-brand-primary font-bold uppercase text-sm md:text-lg mb-2 md:mb-4">Gasta</span>
+                                <div className="text-4xl md:text-6xl font-black text-brand-primary"><MathTex tex={`\\frac{${sData.frac.n}}{${sData.frac.d}}`} /></div>
                             </div>
                             
-                            {/* Gráfico Interactivo Rectangular */}
                             <InteractiveRectFraction 
                                 n={sData.frac.n} 
                                 d={sData.frac.d} 
                                 onComplete={(status) => setIsStepCompleted(status)} 
                             />
                             
-                            <div className={`flex flex-col items-center transition-all duration-700 w-32 shrink-0 ${isStepCompleted ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
-                                <span className="text-brand-secondary font-bold uppercase text-lg mb-4 animate-pulse">¡Queda!</span>
-                                <div className="text-7xl font-black text-brand-secondary neon-text"><MathTex tex={`\\frac{${sData.remain.n}}{${sData.remain.d}}`} /></div>
+                            <div className={`flex flex-col items-center transition-all duration-700 w-24 md:w-32 shrink-0 ${isStepCompleted ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 pointer-events-none absolute lg:relative -z-10 lg:z-auto'}`}>
+                                <span className="text-brand-secondary font-bold uppercase text-sm md:text-lg mb-2 md:mb-4 animate-pulse">¡Queda!</span>
+                                <div className="text-5xl md:text-7xl font-black text-brand-secondary neon-text"><MathTex tex={`\\frac{${sData.remain.n}}{${sData.remain.d}}`} /></div>
                             </div>
                         </div>
                     </div>
@@ -532,35 +515,37 @@
             } else if (step === ex.steps.length + 1) {
                 robotMsg = `¡Construimos la ecuación multiplicando todos los restos sucesivos por el Total inicial!`;
                 boardContent = (
-                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center">
-                        <div className="text-slate-400 font-bold uppercase tracking-widest mb-8 border border-slate-600 px-6 py-2 rounded-full">Planteando Ecuación</div>
-                        <div className="glass-panel p-12 rounded-[3rem] border-4 border-brand-yellow shadow-[0_0_50px_rgba(255,230,0,0.3)]">
-                            <div className="text-5xl md:text-7xl font-black text-white"><MathTex tex={ex.eqRaw} /></div>
+                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center overflow-hidden">
+                        <div className="text-slate-400 font-bold uppercase tracking-widest mb-4 md:mb-8 border border-slate-600 px-4 md:px-6 py-1.5 md:py-2 rounded-full text-xs md:text-base">Planteando Ecuación</div>
+                        <div className="glass-panel w-full max-w-full p-4 md:p-12 rounded-[1.5rem] md:rounded-[3rem] border-2 md:border-4 border-brand-yellow shadow-[0_0_30px_rgba(255,230,0,0.3)] overflow-x-auto hide-scrollbar">
+                            <div className="text-2xl sm:text-4xl md:text-7xl font-black text-white min-w-max px-2 md:px-0 py-2"><MathTex tex={ex.eqRaw} /></div>
                         </div>
                     </div>
                 );
             } else if (step === ex.steps.length + 2) {
-                robotMsg = `¡El truco de oro! Simplificamos cruzado ANTES de multiplicar. Así trabajamos con números pequeños.`;
+                robotMsg = `¡El truco de oro! Simplificamos cruzado ANTES de multiplicar. Así es más fácil.`;
                 boardContent = (
-                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center">
-                        <div className="text-brand-secondary font-bold uppercase tracking-widest mb-8 bg-brand-secondary/20 border border-brand-secondary px-8 py-3 rounded-full animate-pulseGlow">Simplificación Rápida</div>
-                        <div className="glass-panel p-12 rounded-[3rem] border-4 border-brand-secondary shadow-[0_0_50px_rgba(0,240,255,0.4)] mb-8">
-                            <div className="text-5xl md:text-7xl font-black text-white"><MathTex tex={ex.simpVis} /></div>
+                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center overflow-hidden">
+                        <div className="text-brand-secondary font-bold uppercase tracking-widest mb-4 md:mb-8 bg-brand-secondary/20 border border-brand-secondary px-4 md:px-8 py-2 md:py-3 rounded-full animate-pulseGlow text-xs md:text-base">Simplificación Rápida</div>
+                        <div className="glass-panel w-full max-w-full p-4 md:p-12 rounded-[1.5rem] md:rounded-[3rem] border-2 md:border-4 border-brand-secondary shadow-[0_0_30px_rgba(0,240,255,0.4)] mb-4 md:mb-8 overflow-x-auto hide-scrollbar">
+                            <div className="text-2xl sm:text-4xl md:text-7xl font-black text-white min-w-max px-2 md:px-0 py-2"><MathTex tex={ex.simpVis} /></div>
                         </div>
                     </div>
                 );
             } else if (step === ex.steps.length + 3) {
                 robotMsg = ex.type === 'total_spent' 
-                    ? `Resolvemos para encontrar el total, y luego restamos lo que le quedó para hallar lo que Gastó. ¡Misión cumplida!`
+                    ? `Resolvemos para encontrar el total, y luego restamos lo que le quedó. ¡Misión cumplida!`
                     : `¡Ecuación reducida! Operamos para encontrar la respuesta final. ¡Gran trabajo!`;
                 boardContent = (
-                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center">
-                        <Icon name="award" size={100} className="text-brand-yellow mb-8 drop-shadow-[0_0_20px_rgba(255,230,0,0.8)]" />
-                        <div className="text-4xl md:text-6xl font-black mb-12 glass-panel p-10 rounded-[3rem] border-4 border-slate-600"><MathTex tex={ex.resolution} /></div>
+                    <div className="flex flex-col items-center justify-center h-full w-full anim-slide text-center overflow-hidden">
+                        <Icon name="award" size={80} className="md:w-28 md:h-28 text-brand-yellow mb-4 md:mb-8 drop-shadow-[0_0_20px_rgba(255,230,0,0.8)]" />
+                        <div className="text-2xl md:text-6xl font-black mb-6 md:mb-12 glass-panel p-4 md:p-10 rounded-[1.5rem] md:rounded-[3rem] border-2 md:border-4 border-slate-600 overflow-x-auto hide-scrollbar w-full">
+                            <div className="min-w-max px-2 py-1"><MathTex tex={ex.resolution} /></div>
+                        </div>
                         
-                        <div className="bg-gradient-to-r from-brand-green to-emerald-600 text-slate-900 px-16 py-8 rounded-[3rem] border-8 border-white shadow-[0_0_50px_rgba(0,255,102,0.8)] transform -rotate-2 hover:rotate-0 transition-transform">
-                            <div className="text-xl font-black uppercase tracking-widest mb-2 opacity-80">Respuesta Final</div>
-                            <div className="text-7xl font-black">{ex.finalResult}</div>
+                        <div className="bg-gradient-to-r from-brand-green to-emerald-600 text-slate-900 px-8 py-4 md:px-16 md:py-8 rounded-[2rem] md:rounded-[3rem] border-4 md:border-8 border-white shadow-[0_0_30px_rgba(0,255,102,0.8)] transform -rotate-2 hover:rotate-0 transition-transform">
+                            <div className="text-sm md:text-xl font-black uppercase tracking-widest mb-1 md:mb-2 opacity-80">Respuesta Final</div>
+                            <div className="text-4xl md:text-7xl font-black">{ex.finalResult}</div>
                         </div>
                     </div>
                 );
@@ -570,66 +555,68 @@
             const isLast = step === maxSteps;
 
             return (
-                <div className="flex-1 flex flex-col w-full max-w-[1600px] mx-auto p-6 lg:p-8 z-10 min-h-[100dvh]">
+                <div className="flex-1 flex flex-col w-full max-w-[1600px] mx-auto p-3 md:p-6 lg:p-8 z-10 min-h-[100dvh]">
                     
                     {/* Header */}
-                    <div className="flex items-center justify-between glass-panel p-4 rounded-[2rem] border-2 border-white/20 mb-6 shrink-0">
-                        <button onClick={goHome} className="bouncy-hover flex items-center gap-3 px-6 py-3 bg-white/10 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-white/20 transition-colors">
-                            <Icon name="arrow-left" size={20} /> <span className="hidden sm:inline">Misiones</span>
+                    <div className="flex items-center justify-between glass-panel p-2 md:p-4 rounded-[1.5rem] md:rounded-[2rem] border border-white/20 mb-4 md:mb-6 shrink-0">
+                        <button onClick={goHome} className="bouncy-hover flex items-center justify-center md:gap-3 p-3 md:px-6 md:py-3 bg-white/10 rounded-xl md:rounded-xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-white/20 transition-colors">
+                            <Icon name="arrow-left" size={20} className="md:w-5 md:h-5" /> <span className="hidden sm:inline ml-2">Misiones</span>
                         </button>
-                        <div className="flex items-center gap-4">
-                            <div className="bg-brand-primary/20 p-3 rounded-xl text-brand-primary border border-brand-primary/50"><Icon name={ex.icon} size={28} /></div>
-                            <h2 className="font-display font-black text-2xl md:text-3xl neon-text">{ex.title}</h2>
+                        <div className="flex items-center justify-center gap-2 md:gap-4 flex-1">
+                            <div className="bg-brand-primary/20 p-2 md:p-3 rounded-lg md:rounded-xl text-brand-primary border border-brand-primary/50"><Icon name={ex.icon} size={20} className="md:w-7 md:h-7" /></div>
+                            <h2 className="font-display font-black text-xl md:text-3xl neon-text text-center leading-tight">{ex.title}</h2>
                         </div>
-                        <div className="w-[100px]"></div> {/* Spacer */}
+                        <div className="hidden sm:block w-[100px]"></div> {/* Spacer desktop */}
                     </div>
 
                     {/* Enunciado */}
-                    <div className="glass-panel rounded-[2.5rem] p-6 md:p-8 mb-8 border-l-[8px] border-brand-secondary shadow-[0_10px_40px_rgba(0,0,0,0.5)] shrink-0">
-                        <h3 className="text-sm font-black uppercase text-brand-secondary tracking-widest mb-3 flex items-center gap-2"><Icon name="file-text" size={18} /> Datos del Problema</h3>
-                        <p className="text-xl md:text-3xl text-slate-200 font-bold leading-relaxed">{ex.statement}</p>
+                    <div className="glass-panel rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 mb-4 md:mb-8 border-l-[4px] md:border-l-[8px] border-brand-secondary shadow-[0_5px_20px_rgba(0,0,0,0.5)] shrink-0">
+                        <h3 className="text-xs md:text-sm font-black uppercase text-brand-secondary tracking-widest mb-2 md:mb-3 flex items-center gap-2"><Icon name="file-text" size={16} className="md:w-5 md:h-5" /> Datos</h3>
+                        <p className="text-base md:text-3xl text-slate-200 font-bold leading-snug md:leading-relaxed">{ex.statement}</p>
                     </div>
 
                     {/* Contenido Principal */}
-                    <div className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0">
+                    <div className="flex-1 flex flex-col lg:flex-row gap-4 md:gap-8 min-h-0">
                         
                         {/* Robot Column */}
-                        <div className="lg:w-[400px] flex flex-col gap-8 items-center shrink-0">
-                            <div className="drop-shadow-[0_0_40px_rgba(0,240,255,0.4)]">
-                                <AnimatedRobot size={250} />
+                        <div className="lg:w-[400px] flex flex-row lg:flex-col gap-4 lg:gap-8 items-center shrink-0">
+                            <div className="w-24 h-24 md:w-40 md:h-40 lg:w-64 lg:h-64 shrink-0 drop-shadow-[0_0_30px_rgba(0,240,255,0.4)]">
+                                <AnimatedRobot className="w-full h-full" />
                             </div>
-                            <div className="glass-panel w-full p-8 rounded-[3rem] border-t-[8px] border-brand-tertiary relative shadow-2xl text-center">
-                                <div className="absolute -top-[22px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[15px] border-l-transparent border-b-[22px] border-b-brand-tertiary border-r-[15px] border-r-transparent"></div>
-                                <p className="text-2xl text-white font-bold leading-relaxed">{robotMsg}</p>
+                            <div className="glass-panel w-full p-4 md:p-6 lg:p-8 rounded-[1.5rem] md:rounded-[2rem] lg:rounded-[3rem] border-t-[4px] md:border-t-[8px] border-brand-tertiary relative shadow-xl text-center flex-1">
+                                <div className="hidden lg:block absolute -top-[22px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[15px] border-l-transparent border-b-[22px] border-b-brand-tertiary border-r-[15px] border-r-transparent"></div>
+                                {/* Flecha lado para celular */}
+                                <div className="block lg:hidden absolute top-1/2 -left-[14px] -translate-y-1/2 w-0 h-0 border-t-[10px] border-t-transparent border-r-[14px] border-r-brand-tertiary border-b-[10px] border-b-transparent"></div>
+                                <p className="text-sm md:text-xl lg:text-2xl text-white font-bold leading-snug lg:leading-relaxed">{robotMsg}</p>
                             </div>
                         </div>
 
-                        {/* Pizarra Column (Con Grid) */}
-                        <div className="flex-1 glass-panel grid-board rounded-[3rem] border-4 border-slate-600 shadow-inner relative flex flex-col overflow-hidden">
-                            {/* Barra de Progreso */}
-                            <div className="w-full h-3 bg-slate-900 absolute top-0 left-0 z-20">
-                                <div className="h-full bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-green transition-all duration-700 ease-out shadow-[0_0_20px_#00F0FF]" style={{width: `${progress}%`}}></div>
+                        {/* Pizarra Column */}
+                        <div className="flex-1 glass-panel grid-board rounded-[1.5rem] md:rounded-[3rem] border-2 md:border-4 border-slate-600 shadow-inner relative flex flex-col overflow-hidden min-h-[400px] md:min-h-[500px]">
+                            {/* Barra Progreso */}
+                            <div className="w-full h-2 md:h-3 bg-slate-900 absolute top-0 left-0 z-20">
+                                <div className="h-full bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-green transition-all duration-700 ease-out shadow-[0_0_15px_#00F0FF]" style={{width: `${progress}%`}}></div>
                             </div>
 
                             {/* Área Matemática */}
-                            <div className="flex-1 overflow-y-auto p-8 relative pt-12 z-10">
+                            <div className="flex-1 overflow-y-auto p-4 md:p-8 relative pt-8 md:pt-12 z-10 flex flex-col justify-center">
                                 {boardContent}
                             </div>
 
-                            {/* Controles Inferiores */}
-                            <div className="bg-slate-900/90 p-8 border-t-4 border-slate-700 flex justify-between items-center z-20 shrink-0">
+                            {/* Controles */}
+                            <div className="bg-slate-900/90 p-3 md:p-6 lg:p-8 border-t-2 md:border-t-4 border-slate-700 flex justify-between items-center z-20 shrink-0 gap-2">
                                 <button onClick={prevStep} disabled={step === 0} 
-                                    className="bouncy-hover flex items-center gap-2 px-8 py-5 rounded-2xl bg-slate-800 text-slate-300 font-black uppercase tracking-widest hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-all">
-                                    <Icon name="chevron-left" size={28} strokeWidth={3} /> Atrás
+                                    className="bouncy-hover flex items-center justify-center md:gap-2 p-3 md:px-8 md:py-5 rounded-xl md:rounded-2xl bg-slate-800 text-slate-300 font-black uppercase tracking-widest hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-all text-xs md:text-base">
+                                    <Icon name="chevron-left" size={20} strokeWidth={3} className="md:w-7 md:h-7" /> <span className="hidden sm:inline ml-1">Atrás</span>
                                 </button>
                                 
-                                <div className="font-black text-brand-secondary px-8 py-3 rounded-full border-2 border-brand-secondary/30 tracking-widest uppercase text-xl shadow-[0_0_15px_rgba(0,240,255,0.2)]">
-                                    Paso {step} / {maxSteps}
+                                <div className="font-black text-brand-secondary px-3 py-1.5 md:px-8 md:py-3 rounded-full border border-brand-secondary/30 tracking-widest uppercase text-xs md:text-xl shadow-[0_0_10px_rgba(0,240,255,0.2)] text-center whitespace-nowrap">
+                                    Paso {step} <span className="hidden sm:inline">/ {maxSteps}</span>
                                 </div>
 
                                 <button onClick={nextStep} disabled={!isStepCompleted}
-                                    className={`bouncy-hover flex items-center gap-3 px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-white transition-all shadow-xl disabled:opacity-30 disabled:pointer-events-none disabled:grayscale ${isLast ? 'bg-gradient-to-r from-brand-green to-emerald-500 shadow-[0_0_40px_rgba(0,255,102,0.5)] text-slate-900' : 'bg-gradient-to-r from-brand-primary to-pink-600 shadow-[0_0_40px_rgba(255,0,122,0.5)]'}`}>
-                                    {isLast ? '¡Finalizar!' : 'Siguiente'} <Icon name={isLast ? 'check-circle' : 'chevron-right'} size={28} strokeWidth={3} />
+                                    className={`bouncy-hover flex items-center justify-center md:gap-3 p-3 px-4 md:px-10 md:py-5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-white transition-all shadow-lg disabled:opacity-30 disabled:pointer-events-none disabled:grayscale text-xs md:text-base ${isLast ? 'bg-gradient-to-r from-brand-green to-emerald-500 shadow-[0_0_20px_rgba(0,255,102,0.5)] text-slate-900' : 'bg-gradient-to-r from-brand-primary to-pink-600 shadow-[0_0_20px_rgba(255,0,122,0.5)]'}`}>
+                                    <span className="hidden sm:inline mr-1">{isLast ? '¡Finalizar!' : 'Siguiente'}</span> <Icon name={isLast ? 'check-circle' : 'chevron-right'} size={20} strokeWidth={3} className="md:w-7 md:h-7" />
                                 </button>
                             </div>
                         </div>
